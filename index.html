@@ -232,7 +232,7 @@
     <input type="password" id="passInput" placeholder="Password (min 6 chars)" autocomplete="current-password" />
     <div id="authError" class="auth-error"></div>
     <div id="authBtnArea">
-      <button class="auth-btn" id="authActionBtn" onclick="handleAuth()">Continue with Email</button>
+      <button class="auth-btn" id="authActionBtn" onclick="handleAuth()">Create Account</button>
     </div>
     <div style="margin-top:16px;">
       <span class="auth-link" id="authToggle" onclick="toggleAuthMode()">Already have an account? Sign in</span>
@@ -380,9 +380,15 @@ function checkConfig() {
 }
 
 function initSupabase() {
-  if (!checkConfig()) return;
-  supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  checkSession();
+  if (!checkConfig()) return false;
+  try {
+    supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    checkSession();
+    return true;
+  } catch(e) {
+    document.getElementById('authError').textContent = 'Failed to connect: ' + e.message;
+    return false;
+  }
 }
 
 async function checkSession() {
@@ -435,20 +441,21 @@ async function handleAuth() {
   }
 }
 
-// Auth state change listener
+// Auth state change listener - ALSO runs if supabase is null (no config yet)
 document.addEventListener('DOMContentLoaded', () => {
-  if (!initSupabase()) return;
   document.getElementById('dateInput').valueAsDate = new Date();
-
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (session && !currentUser) {
-      currentUser = session.user;
-      showApp();
-    } else if (!session && currentUser) {
-      currentUser = null;
-      showAuth();
-    }
-  });
+  initSupabase();
+  if (supabase) {
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (session && !currentUser) {
+        currentUser = session.user;
+        showApp();
+      } else if (!session && currentUser) {
+        currentUser = null;
+        showAuth();
+      }
+    });
+  }
 });
 
 function showError(msg) {
