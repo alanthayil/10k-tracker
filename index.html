@@ -229,13 +229,11 @@
     <h1>⚡ 10K</h1>
     <p>Mastery Tracker — your journey to 10,000 hours</p>
     <input type="email" id="emailInput" placeholder="Your email address" autocomplete="email" />
-    <input type="password" id="passInput" placeholder="Password (min 6 chars)" autocomplete="current-password" style="display:none;" />
+    <input type="password" id="passInput" placeholder="Password (min 6 chars)" autocomplete="current-password" />
     <div id="authError" class="auth-error"></div>
     <div id="authBtnArea">
       <button class="auth-btn" id="authActionBtn" onclick="handleAuth()">Continue with Email</button>
     </div>
-    <div class="auth-divider">or</div>
-    <button class="auth-btn" onclick="loginWithGitHub()" style="background:var(--surface2);border:1px solid var(--border);">🖤 Continue with GitHub</button>
     <div style="margin-top:16px;">
       <span class="auth-link" id="authToggle" onclick="toggleAuthMode()">Already have an account? Sign in</span>
     </div>
@@ -398,7 +396,6 @@ async function checkSession() {
 // === Auth ===
 function toggleAuthMode() {
   isSignUp = !isSignUp;
-  document.getElementById('passInput').style.display = isSignUp ? 'none' : 'block';
   document.getElementById('authActionBtn').textContent = isSignUp ? 'Create Account' : 'Sign In';
   document.getElementById('authToggle').textContent = isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up";
   document.getElementById('authError').textContent = '';
@@ -410,26 +407,32 @@ async function handleAuth() {
   document.getElementById('authError').textContent = '';
 
   if (!email) { showError('Please enter your email'); return; }
+  if (!pass || pass.length < 6) { showError('Password must be at least 6 characters'); return; }
+
+  document.getElementById('authActionBtn').disabled = true;
+  document.getElementById('authActionBtn').textContent = 'Please wait...';
 
   if (isSignUp) {
-    // Send magic link
-    const { error } = await supabase.auth.signInWithOtp({ email });
+    const { data, error } = await supabase.auth.signUp({ email, password: pass });
+    document.getElementById('authActionBtn').disabled = false;
+    document.getElementById('authActionBtn').textContent = 'Create Account';
     if (error) { showError(error.message); return; }
-    showToast('📧 Magic link sent! Check your email.', 'info');
-    document.getElementById('authActionBtn').disabled = true;
-    document.getElementById('authActionBtn').textContent = 'Check your email...';
+    if (data?.user?.identities?.length === 0) {
+      showError('This email is already registered. Switch to Sign In.');
+      return;
+    }
+    showToast('✅ Account created! Check your email to confirm.', 'success');
+    isSignUp = false;
+    document.getElementById('authActionBtn').textContent = 'Sign In';
+    document.getElementById('authToggle').textContent = "Don't have an account? Sign up";
   } else {
-    if (!pass || pass.length < 6) { showError('Password must be at least 6 characters'); return; }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    document.getElementById('authActionBtn').disabled = false;
+    document.getElementById('authActionBtn').textContent = 'Sign In';
     if (error) { showError(error.message); return; }
     currentUser = data.user;
     showApp();
   }
-}
-
-async function loginWithGitHub() {
-  const { error } = await supabase.auth.signInWithOAuth({ provider: 'github' });
-  if (error) showError(error.message);
 }
 
 // Auth state change listener
