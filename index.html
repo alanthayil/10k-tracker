@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚡ 10K Mastery Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f;
+      --surface: #14141f;
+      --surface2: #1e1e30;
+      --border: #2a2a40;
+      --text: #e8e8f0;
+      --text2: #8888aa;
+      --gold: #f1c40f;
+      --blue: #5b7fff;
+      --purple: #9b59b6;
+      --green: #2ecc71;
+      --orange: #e67e22;
+      --red: #e74c3c;
+      --radius: 12px;
+    }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* Auth Screen */
+    #authScreen {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 20px;
+    }
+    .auth-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 40px; max-width: 400px; width: 100%;
+      text-align: center;
+    }
+    .auth-card h1 { font-size: 28px; font-weight: 900; margin-bottom: 4px; }
+    .auth-card p { color: var(--text2); font-size: 14px; margin-bottom: 24px; }
+    .auth-card input {
+      width: 100%; padding: 12px 14px; border-radius: 8px;
+      background: var(--bg); border: 1px solid var(--border); color: var(--text);
+      font-size: 14px; font-family: inherit; margin-bottom: 10px;
+    }
+    .auth-card input:focus { outline: none; border-color: var(--blue); }
+    .auth-btn {
+      width: 100%; padding: 12px; border-radius: 8px; border: none;
+      background: var(--blue); color: #fff; font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: opacity 0.2s;
+    }
+    .auth-btn:hover { opacity: 0.9; }
+    .auth-divider { color: var(--text2); font-size: 12px; margin: 16px 0; }
+    .auth-error { color: var(--red); font-size: 13px; margin-top: 8px; }
+    .auth-link { color: var(--blue); cursor: pointer; font-size: 13px; }
+    .auth-link:hover { text-decoration: underline; }
+
+    /* App */
+    .app { max-width: 1100px; margin: 0 auto; padding: 20px; display: none; }
+
+    /* Header */
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 16px 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 20px;
+      flex-wrap: wrap; gap: 12px;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+    .logo span { color: var(--text2); font-weight: 300; font-size: 13px; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .user-email { color: var(--text2); font-size: 13px; }
+    .logout-btn {
+      background: none; border: 1px solid var(--border); color: var(--text2);
+      padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px;
+    }
+    .logout-btn:hover { color: var(--red); border-color: var(--red); }
+
+    /* Mastery Banner */
+    .mastery-banner {
+      background: linear-gradient(135deg, var(--surface) 0%, #1a1a30 100%);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px 28px; margin-bottom: 20px;
+    }
+    .mastery-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: center; }
+    @media (max-width: 600px) { .mastery-grid { grid-template-columns: 1fr; } }
+    .mastery-stats h2 { font-size: 13px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .mastery-hours { font-size: 40px; font-weight: 900; }
+    .mastery-hours .total { color: var(--gold); }
+    .mastery-hours .of { font-size: 18px; font-weight: 400; color: var(--text2); }
+    .mastery-hours .goal { font-size: 24px; font-weight: 600; color: var(--text2); }
+    .mastery-label { font-size: 13px; color: var(--text2); margin-top: 4px; }
+    .mastery-label strong { color: var(--gold); }
+
+    .progress-container { position: relative; }
+    .progress-bar {
+      width: 100%; height: 20px; background: var(--surface2);
+      border-radius: 10px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 10px;
+      background: linear-gradient(90deg, var(--gold), #f39c12);
+      transition: width 0.8s ease;
+    }
+    .progress-text {
+      text-align: right; font-size: 12px; color: var(--text2); margin-top: 4px;
+    }
+    .milestone-text {
+      text-align: center; font-size: 14px; color: var(--gold); margin-top: 8px;
+      font-weight: 600;
+    }
+
+    /* Cards grid */
+    .cards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    @media (max-width: 700px) { .cards-grid { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 20px; border: 1px solid var(--border);
+    }
+    .card h3 { font-size: 14px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+
+    /* Quick Log Form */
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 3px; font-weight: 500; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    input, select, textarea {
+      width: 100%; padding: 10px 12px; border-radius: 8px;
+      background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); font-size: 14px; font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--blue); }
+    textarea { resize: vertical; min-height: 60px; }
+    .btn-primary {
+      width: 100%; padding: 11px; border-radius: 8px; border: none;
+      background: var(--blue); color: #fff; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: opacity 0.2s; margin-top: 4px;
+    }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Skill breakdown */
+    .skill-list { list-style: none; }
+    .skill-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .skill-item:last-child { border-bottom: none; }
+    .skill-name { font-size: 14px; font-weight: 500; }
+    .skill-hours { font-size: 14px; color: var(--text2); }
+    .skill-bar {
+      height: 4px; background: var(--surface2); border-radius: 2px; margin-top: 4px;
+      overflow: hidden;
+    }
+    .skill-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+
+    /* Entries */
+    .entries-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+    .entries-header h3 { font-size: 14px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin: 0; }
+    .filter-select { padding: 6px 10px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-size: 12px; }
+
+    .entry-list { list-style: none; max-height: 400px; overflow-y: auto; }
+    .entry-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 12px; border-radius: 8px; background: var(--bg); margin-bottom: 4px;
+      border-left: 3px solid var(--blue);
+    }
+    .entry-info { display: flex; flex-direction: column; gap: 1px; }
+    .entry-skill { font-size: 13px; font-weight: 500; }
+    .entry-meta { font-size: 11px; color: var(--text2); }
+    .entry-hours { font-size: 15px; font-weight: 700; color: var(--gold); }
+    .entry-notes { font-size: 11px; color: var(--text2); font-style: italic; }
+    .entry-delete {
+      background: none; border: none; color: var(--text2); cursor: pointer;
+      padding: 4px 8px; font-size: 14px; opacity: 0; transition: opacity 0.2s;
+    }
+    .entry-item:hover .entry-delete { opacity: 1; }
+    .entry-delete:hover { color: var(--red); }
+
+    .empty-state { text-align: center; padding: 30px 20px; color: var(--text2); }
+    .empty-state h3 { font-size: 16px; margin-bottom: 4px; color: var(--text); }
+
+    /* Chart */
+    .chart-container { position: relative; height: 200px; }
+
+    /* Streak */
+    .streak-box {
+      display: flex; align-items: center; gap: 16px; padding: 12px 0;
+    }
+    .streak-num { font-size: 32px; font-weight: 900; color: var(--gold); }
+    .streak-label { font-size: 12px; color: var(--text2); }
+    .streak-fire { font-size: 28px; }
+
+    /* Export */
+    .export-bar { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+    .btn-export {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--text2);
+      padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px;
+      transition: all 0.2s;
+    }
+    .btn-export:hover { color: var(--text); border-color: var(--blue); }
+
+    /* Loading */
+    .loading { text-align: center; padding: 40px; color: var(--text2); }
+
+    /* Toasts */
+    .toast {
+      position: fixed; bottom: 20px; right: 20px;
+      padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 500;
+      z-index: 1000; transform: translateY(100px); opacity: 0;
+      transition: all 0.3s ease;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { background: var(--green); color: #fff; }
+    .toast.error { background: var(--red); color: #fff; }
+    .toast.info { background: var(--blue); color: #fff; }
+
+    .skills-chart { margin-top: 10px; }
+  </style>
+</head>
+<body>
+<!-- Auth Screen -->
+<div id="authScreen">
+  <div class="auth-card">
+    <h1>⚡ 10K</h1>
+    <p>Mastery Tracker — your journey to 10,000 hours</p>
+    <input type="email" id="emailInput" placeholder="Your email address" autocomplete="email" />
+    <input type="password" id="passInput" placeholder="Password (min 6 chars)" autocomplete="current-password" style="display:none;" />
+    <div id="authError" class="auth-error"></div>
+    <div id="authBtnArea">
+      <button class="auth-btn" id="authActionBtn" onclick="handleAuth()">Continue with Email</button>
+    </div>
+    <div class="auth-divider">or</div>
+    <button class="auth-btn" onclick="loginWithGitHub()" style="background:var(--surface2);border:1px solid var(--border);">🖤 Continue with GitHub</button>
+    <div style="margin-top:16px;">
+      <span class="auth-link" id="authToggle" onclick="toggleAuthMode()">Already have an account? Sign in</span>
+    </div>
+  </div>
+</div>
+
+<!-- App -->
+<div class="app" id="app">
+  <div class="header">
+    <div class="logo"><h1>⚡ 10K</h1><span>Mastery Tracker</span></div>
+    <div class="header-right">
+      <span class="user-email" id="userEmail"></span>
+      <button class="logout-btn" onclick="logout()">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- Mastery Banner -->
+  <div class="mastery-banner">
+    <div class="mastery-grid">
+      <div class="mastery-stats">
+        <h2>Total Practice</h2>
+        <div class="mastery-hours">
+          <span class="total" id="totalHours">0</span>
+          <span class="of"> / </span>
+          <span class="goal">10,000 hrs</span>
+        </div>
+        <div class="mastery-label" id="masteryLabel"><strong>0%</strong> of the way to mastery</div>
+      </div>
+      <div class="progress-container">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        <div class="progress-text"><span id="remainingHours">10,000</span> hours remaining</div>
+        <div class="milestone-text" id="milestoneText">🏁 Every hour counts</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Streak Row -->
+  <div class="card" style="margin-bottom:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <h3 style="font-size:14px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;">🔥 Streak</h3>
+      <div class="streak-box">
+        <span class="streak-fire" id="streakEmoji">🔥</span>
+        <span class="streak-num" id="streakCount">0</span>
+        <span class="streak-label">day streak</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="cards-grid">
+    <!-- Quick Log -->
+    <div class="card">
+      <h3>✏️ Log Practice</h3>
+      <div class="form-group">
+        <label>Skill</label>
+        <input type="text" id="skillInput" placeholder="e.g. Piano, Coding, Drawing" list="skillSuggestions" />
+        <datalist id="skillSuggestions"></datalist>
+      </div>
+      <div class="form-group">
+        <label>Sub-skill (optional)</label>
+        <input type="text" id="subSkillInput" placeholder="e.g. Scales, React, Anatomy" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Hours</label>
+          <input type="number" id="hoursInput" placeholder="1.5" step="0.1" min="0" />
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="dateInput" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <textarea id="notesInput" placeholder="What did you work on?"></textarea>
+      </div>
+      <button class="btn-primary" id="logBtn" onclick="logEntry()">+ Log Hours</button>
+    </div>
+
+    <!-- Skill Breakdown -->
+    <div class="card">
+      <h3>📊 Skills Breakdown</h3>
+      <div class="skill-list" id="skillBreakdown">
+        <div class="empty-state"><p>Log some hours to see your breakdown</p></div>
+      </div>
+      <div class="skills-chart">
+        <div class="chart-container"><canvas id="skillsChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Entries -->
+  <div class="card" style="margin-bottom:20px;">
+    <div class="entries-header">
+      <h3>📋 Recent Entries</h3>
+      <div>
+        <select class="filter-select" id="skillFilter" onchange="renderEntries()">
+          <option value="all">All Skills</option>
+        </select>
+      </div>
+    </div>
+    <ul class="entry-list" id="entryList"></ul>
+    <div class="export-bar">
+      <button class="btn-export" onclick="exportData()">📥 Export JSON</button>
+      <button class="btn-export" onclick="document.getElementById('importFile').click()">📤 Import JSON</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)" />
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// === Supabase Setup ===
+// YOU NEED TO CONFIGURE THESE:
+const SUPABASE_URL = 'https://rtsmauxegxbmrrfojuag.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0c21hdXhlZ3hibXJyZm9qdWFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMjU3NzUsImV4cCI6MjA5NjYwMTc3NX0.3TZBBvIciQCbVxCN3ahgPAxmlU38om6cJBDajlHfnFw';
+
+let supabase = null;
+let currentUser = null;
+let entries = [];
+let charts = { skills: null };
+let isSignUp = true;
+
+// Wait for config
+function checkConfig() {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    document.getElementById('authBtnArea').innerHTML = `
+      <div style="color:var(--orange);font-size:13px;padding:12px;background:var(--surface2);border-radius:8px;text-align:left;">
+        <strong>⚙️ Setup required</strong><br/><br/>
+        1. Go to <a href="https://supabase.com" target="_blank" style="color:var(--blue)">supabase.com</a> and create a free account<br/>
+        2. Create a new project<br/>
+        3. Go to Project Settings → API<br/>
+        4. Copy your <strong>Project URL</strong> and <strong>anon public key</strong><br/>
+        5. Open <code>/home/alan/.openclaw/workspace/10k-tracker/index.html</code><br/>
+        6. Find <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> at the top of the script<br/>
+        7. Paste them in and refresh!
+      </div>
+    `;
+    return false;
+  }
+  return true;
+}
+
+function initSupabase() {
+  if (!checkConfig()) return;
+  supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  checkSession();
+}
+
+async function checkSession() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    showApp();
+  }
+}
+
+// === Auth ===
+function toggleAuthMode() {
+  isSignUp = !isSignUp;
+  document.getElementById('passInput').style.display = isSignUp ? 'none' : 'block';
+  document.getElementById('authActionBtn').textContent = isSignUp ? 'Create Account' : 'Sign In';
+  document.getElementById('authToggle').textContent = isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up";
+  document.getElementById('authError').textContent = '';
+}
+
+async function handleAuth() {
+  const email = document.getElementById('emailInput').value.trim();
+  const pass = document.getElementById('passInput').value;
+  document.getElementById('authError').textContent = '';
+
+  if (!email) { showError('Please enter your email'); return; }
+
+  if (isSignUp) {
+    // Send magic link
+    const { error } = await supabase.auth.signInWithOtp({ email });
+    if (error) { showError(error.message); return; }
+    showToast('📧 Magic link sent! Check your email.', 'info');
+    document.getElementById('authActionBtn').disabled = true;
+    document.getElementById('authActionBtn').textContent = 'Check your email...';
+  } else {
+    if (!pass || pass.length < 6) { showError('Password must be at least 6 characters'); return; }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    if (error) { showError(error.message); return; }
+    currentUser = data.user;
+    showApp();
+  }
+}
+
+async function loginWithGitHub() {
+  const { error } = await supabase.auth.signInWithOAuth({ provider: 'github' });
+  if (error) showError(error.message);
+}
+
+// Auth state change listener
+document.addEventListener('DOMContentLoaded', () => {
+  if (!initSupabase()) return;
+  document.getElementById('dateInput').valueAsDate = new Date();
+
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (session && !currentUser) {
+      currentUser = session.user;
+      showApp();
+    } else if (!session && currentUser) {
+      currentUser = null;
+      showAuth();
+    }
+  });
+});
+
+function showError(msg) {
+  document.getElementById('authError').textContent = msg;
+}
+
+function showAuth() {
+  document.getElementById('authScreen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('userEmail').textContent = currentUser.email || currentUser.id.slice(0, 8);
+  loadData();
+}
+
+async function logout() {
+  await supabase.auth.signOut();
+  currentUser = null;
+  showAuth();
+}
+
+// === Data ===
+async function loadData() {
+  if (!currentUser) return;
+  const { data, error } = await supabase
+    .from('entries')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('date', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  if (error) { console.error(error); showToast('Error loading data', 'error'); return; }
+  entries = data || [];
+  render();
+}
+
+async function logEntry() {
+  const skill = document.getElementById('skillInput').value.trim();
+  const sub_skill = document.getElementById('subSkillInput').value.trim() || null;
+  const hours = parseFloat(document.getElementById('hoursInput').value);
+  const date = document.getElementById('dateInput').value;
+  const notes = document.getElementById('notesInput').value.trim() || null;
+
+  if (!skill) { shake(document.getElementById('skillInput')); return; }
+  if (!hours || hours <= 0) { shake(document.getElementById('hoursInput')); return; }
+  if (!date) { shake(document.getElementById('dateInput')); return; }
+
+  document.getElementById('logBtn').disabled = true;
+  document.getElementById('logBtn').textContent = 'Saving...';
+
+  const { data, error } = await supabase
+    .from('entries')
+    .insert({ user_id: currentUser.id, skill, sub_skill, hours, date, notes })
+    .select();
+
+  document.getElementById('logBtn').disabled = false;
+  document.getElementById('logBtn').textContent = '+ Log Hours';
+
+  if (error) { showToast('Error: ' + error.message, 'error'); return; }
+
+  if (data && data[0]) {
+    entries.unshift(data[0]);
+    render();
+    showToast(`✅ ${hours}h logged for ${skill}`, 'success');
+  }
+
+  // Reset form
+  document.getElementById('hoursInput').value = '';
+  document.getElementById('notesInput').value = '';
+  document.getElementById('skillInput').focus();
+}
+
+async function deleteEntry(id) {
+  if (!confirm('Delete this entry?')) return;
+  const { error } = await supabase.from('entries').delete().eq('id', id);
+  if (error) { showToast('Error: ' + error.message, 'error'); return; }
+  entries = entries.filter(e => e.id !== id);
+  render();
+  showToast('Deleted', 'info');
+}
+
+// === Render ===
+function render() {
+  updateMastery();
+  renderSkills();
+  renderEntries();
+  updateStreak();
+  updateSkillFilter();
+  updateSkillSuggestions();
+}
+
+function updateMastery() {
+  const total = entries.reduce((s, e) => s + Number(e.hours), 0);
+  const pct = Math.min((total / 10000) * 100, 100);
+
+  document.getElementById('totalHours').textContent = total.toFixed(1);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('masteryLabel').innerHTML = `<strong>${pct.toFixed(1)}%</strong> of the way to mastery`;
+  document.getElementById('remainingHours').textContent = Math.max(0, 10000 - total).toFixed(1);
+
+  // Milestones
+  const milestones = [1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+  let next = 10000;
+  for (const m of milestones) {
+    if (total < m) { next = m; break; }
+  }
+  if (total >= 10000) {
+    document.getElementById('milestoneText').textContent = '🏆 MASTERY ACHIEVED! You\'ve completed 10,000 hours!';
+  } else {
+    document.getElementById('milestoneText').textContent = `🎯 Next milestone: ${next} hours (${(next - total).toFixed(1)} to go)`;
+  }
+}
+
+function renderSkills() {
+  const map = {};
+  entries.forEach(e => {
+    const sk = e.skill;
+    if (!map[sk]) map[sk] = 0;
+    map[sk] += Number(e.hours);
+  });
+
+  const skills = Object.entries(map).sort((a, b) => b[1] - a[1]);
+  const total = entries.reduce((s, e) => s + Number(e.hours), 0);
+  const container = document.getElementById('skillBreakdown');
+  const colors = ['#5b7fff', '#2ecc71', '#f1c40f', '#e74c3c', '#9b59b6', '#e67e22', '#1abc9c', '#e91e63'];
+
+  if (skills.length === 0) {
+    container.innerHTML = `<div class="empty-state"><p>Log some hours to see your breakdown</p></div>`;
+    return;
+  }
+
+  container.innerHTML = skills.map(([name, hrs], i) => {
+    const pct = (hrs / total) * 100;
+    return `<div class="skill-item">
+      <div style="flex:1;">
+        <div style="display:flex;justify-content:space-between;">
+          <span class="skill-name">${escHtml(name)}</span>
+          <span class="skill-hours">${hrs.toFixed(1)}h</span>
+        </div>
+        <div class="skill-bar"><div class="skill-bar-fill" style="width:${pct}%;background:${colors[i % colors.length]}"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Chart
+  const ctx = document.getElementById('skillsChart').getContext('2d');
+  if (charts.skills) charts.skills.destroy();
+
+  if (skills.length > 0) {
+    charts.skills = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: skills.map(s => s[0]),
+        datasets: [{
+          data: skills.map(s => s[1]),
+          backgroundColor: colors.slice(0, skills.length),
+          borderRadius: 4,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        indexAxis: 'y',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(15,15,19,0.9)',
+            callbacks: { label: ctx => ctx.parsed.x.toFixed(1) + ' hours' }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: '#8888aa', font: { size: 10 } }
+          },
+          y: {
+            grid: { display: false },
+            ticks: { color: '#8888aa', font: { size: 10 } }
+          }
+        }
+      }
+    });
+  }
+}
+
+function renderEntries() {
+  const filter = document.getElementById('skillFilter').value;
+  const list = document.getElementById('entryList');
+  let filtered = filter === 'all' ? entries : entries.filter(e => e.skill === filter);
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state"><h3>No entries yet</h3><p>Log your first practice session ☝️</p></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.slice(0, 50).map(e => {
+    const date = new Date(e.date + 'T00:00:00');
+    const formatted = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const sub = e.sub_skill ? ` · ${escHtml(e.sub_skill)}` : '';
+    const notes = e.notes ? `<div class="entry-notes">${escHtml(e.notes)}</div>` : '';
+    return `<li class="entry-item">
+      <div class="entry-info">
+        <div class="entry-skill">${escHtml(e.skill)}${sub}</div>
+        <div class="entry-meta">${formatted}</div>
+        ${notes}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="entry-hours">${Number(e.hours).toFixed(1)}h</span>
+        <button class="entry-delete" onclick="deleteEntry('${e.id}')">✕</button>
+      </div>
+    </li>`;
+  }).join('');
+}
+
+function updateStreak() {
+  // Calculate streak from entries
+  const dates = [...new Set(entries.map(e => e.date))].sort().reverse();
+  if (dates.length === 0) {
+    document.getElementById('streakCount').textContent = '0';
+    document.getElementById('streakEmoji').textContent = '😴';
+    return;
+  }
+
+  let streak = 0;
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+  // Check if latest entry is today or yesterday
+  if (dates[0] !== today && dates[0] !== yesterday) {
+    document.getElementById('streakCount').textContent = '0';
+    document.getElementById('streakEmoji').textContent = '😴';
+    return;
+  }
+
+  let check = new Date(dates[0] + 'T00:00:00');
+  for (const d of dates) {
+    const dateStr = check.toISOString().split('T')[0];
+    if (d === dateStr) {
+      streak++;
+      check.setDate(check.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  document.getElementById('streakCount').textContent = streak;
+  document.getElementById('streakEmoji').textContent = streak >= 30 ? '🔥🔥' : streak >= 7 ? '🔥' : '💪';
+}
+
+function updateSkillFilter() {
+  const skills = [...new Set(entries.map(e => e.skill))];
+  const select = document.getElementById('skillFilter');
+  const current = select.value;
+  select.innerHTML = '<option value="all">All Skills</option>' + skills.map(s => `<option value="${escHtml(s)}">${escHtml(s)}</option>`).join('');
+  if (skills.includes(current)) select.value = current;
+}
+
+function updateSkillSuggestions() {
+  const skills = [...new Set(entries.map(e => e.skill))];
+  document.getElementById('skillSuggestions').innerHTML = skills.map(s => `<option value="${escHtml(s)}">`).join('');
+}
+
+// === Export / Import ===
+function exportData() {
+  const blob = new Blob([JSON.stringify(entries, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = '10k_tracker_backup.json';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+async function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  try {
+    const data = JSON.parse(text);
+    if (!Array.isArray(data)) throw new Error('Invalid format');
+    
+    // Bulk insert
+    const { error } = await supabase
+      .from('entries')
+      .insert(data.map(e => ({
+        user_id: currentUser.id,
+        skill: e.skill,
+        sub_skill: e.sub_skill,
+        hours: e.hours,
+        date: e.date,
+        notes: e.notes
+      })));
+
+    if (error) { showToast('Import error: ' + error.message, 'error'); return; }
+    showToast(`✅ Imported ${data.length} entries`, 'success');
+    loadData();
+  } catch (ex) {
+    showToast('Invalid JSON file', 'error');
+  }
+  event.target.value = '';
+}
+
+// === Helpers ===
+function escHtml(s) {
+  if (!s) return '';
+  const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+}
+
+function shake(el) {
+  el.style.borderColor = 'var(--red)';
+  el.style.animation = 'none';
+  el.offsetHeight;
+  el.style.animation = 'shake 0.3s ease';
+  setTimeout(() => el.style.borderColor = '', 1000);
+}
+
+function showToast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type + ' show';
+  clearTimeout(t._timeout);
+  t._timeout = setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+
+<style>
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+</style>
+</body>
+</html>
