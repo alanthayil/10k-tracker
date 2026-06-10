@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -57,7 +57,11 @@
     .auth-btn:hover { opacity: 0.9; }
     .auth-divider { color: var(--text2); font-size: 12px; margin: 16px 0; }
     .auth-error { color: var(--red); font-size: 13px; margin-top: 8px; }
-    .auth-link { color: var(--blue); cursor: pointer; font-size: 13px; }
+    .auth-link {
+      background: none; border: none; padding: 0;
+      color: var(--blue); cursor: pointer; font-size: 13px;
+      font-family: inherit;
+    }
     .auth-link:hover { text-decoration: underline; }
 
     /* App */
@@ -174,12 +178,13 @@
     .entry-meta { font-size: 11px; color: var(--text2); }
     .entry-hours { font-size: 15px; font-weight: 700; color: var(--gold); }
     .entry-notes { font-size: 11px; color: var(--text2); font-style: italic; }
+    .entry-hint { font-size: 11px; color: var(--text2); margin-top: 10px; text-align: center; }
     .entry-delete {
       background: none; border: none; color: var(--text2); cursor: pointer;
-      padding: 4px 8px; font-size: 14px; opacity: 0; transition: opacity 0.2s;
+      padding: 4px 8px; font-size: 14px; opacity: 0.55; transition: opacity 0.2s, color 0.2s;
     }
     .entry-item:hover .entry-delete { opacity: 1; }
-    .entry-delete:hover { color: var(--red); }
+    .entry-delete:hover { color: var(--red); opacity: 1; }
 
     .empty-state { text-align: center; padding: 30px 20px; color: var(--text2); }
     .empty-state h3 { font-size: 16px; margin-bottom: 4px; color: var(--text); }
@@ -232,10 +237,13 @@
     <input type="password" id="passInput" placeholder="Password (min 6 chars)" autocomplete="current-password" />
     <div id="authError" class="auth-error"></div>
     <div id="authBtnArea">
-      <button class="auth-btn" id="authActionBtn" onclick="handleAuth()">Create Account</button>
+      <button type="button" class="auth-btn" id="authActionBtn">Create Account</button>
     </div>
     <div style="margin-top:16px;">
-      <span class="auth-link" id="authToggle" onclick="toggleAuthMode()">Already have an account? Sign in</span>
+      <button type="button" class="auth-link" id="authToggle">Already have an account? Sign in</button>
+    </div>
+    <div id="authForgotArea" style="margin-top:10px; display:none;">
+      <button type="button" class="auth-link" id="authForgot">Forgot password?</button>
     </div>
   </div>
 </div>
@@ -336,6 +344,7 @@
       </div>
     </div>
     <ul class="entry-list" id="entryList"></ul>
+    <p class="entry-hint">Click ✕ on any entry to delete it.</p>
     <div class="export-bar">
       <button class="btn-export" onclick="exportData()">📥 Export JSON</button>
       <button class="btn-export" onclick="document.getElementById('importFile').click()">📤 Import JSON</button>
@@ -353,7 +362,7 @@
 const SUPABASE_URL = 'https://rtsmauxegxbmrrfojuag.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0c21hdXhlZ3hibXJyZm9qdWFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMjU3NzUsImV4cCI6MjA5NjYwMTc3NX0.3TZBBvIciQCbVxCN3ahgPAxmlU38om6cJBDajlHfnFw';
 
-let supabase = null;
+let sb = null;
 let currentUser = null;
 let entries = [];
 let charts = { skills: null };
@@ -369,7 +378,7 @@ function checkConfig() {
         2. Create a new project<br/>
         3. Go to Project Settings → API<br/>
         4. Copy your <strong>Project URL</strong> and <strong>anon public key</strong><br/>
-        5. Open <code>/home/alan/.openclaw/workspace/10k-tracker/index.html</code><br/>
+        5. Open <code>index.html</code> in this project<br/>
         6. Find <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> at the top of the script<br/>
         7. Paste them in and refresh!
       </div>
@@ -381,8 +390,12 @@ function checkConfig() {
 
 function initSupabase() {
   if (!checkConfig()) return false;
+  if (!window.supabase?.createClient) {
+    document.getElementById('authError').textContent = 'Failed to load Supabase library. Check your network and refresh.';
+    return false;
+  }
   try {
-    supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     checkSession();
     return true;
   } catch(e) {
@@ -392,7 +405,7 @@ function initSupabase() {
 }
 
 async function checkSession() {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await sb.auth.getSession();
   if (session) {
     currentUser = session.user;
     showApp();
@@ -402,9 +415,22 @@ async function checkSession() {
 // === Auth ===
 function toggleAuthMode() {
   isSignUp = !isSignUp;
-  document.getElementById('authActionBtn').textContent = isSignUp ? 'Create Account' : 'Sign In';
-  document.getElementById('authToggle').textContent = isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up";
+  resetAuthButton();
+  document.getElementById('authToggle').textContent = isSignUp
+    ? 'Already have an account? Sign in'
+    : "Don't have an account? Sign up";
   document.getElementById('authError').textContent = '';
+  document.getElementById('passInput').placeholder = isSignUp
+    ? 'Password (min 6 chars)'
+    : 'Your password';
+  document.getElementById('authForgotArea').style.display = isSignUp ? 'none' : 'block';
+}
+
+function resetAuthButton() {
+  const btn = document.getElementById('authActionBtn');
+  if (!btn) return;
+  btn.disabled = false;
+  btn.textContent = isSignUp ? 'Create Account' : 'Sign In';
 }
 
 async function handleAuth() {
@@ -414,39 +440,71 @@ async function handleAuth() {
 
   if (!email) { showError('Please enter your email'); return; }
   if (!pass || pass.length < 6) { showError('Password must be at least 6 characters'); return; }
+  if (!sb) { showError('Not connected to Supabase. Refresh the page and try again.'); return; }
 
   document.getElementById('authActionBtn').disabled = true;
   document.getElementById('authActionBtn').textContent = 'Please wait...';
 
-  if (isSignUp) {
-    const { data, error } = await supabase.auth.signUp({ email, password: pass });
-    document.getElementById('authActionBtn').disabled = false;
-    document.getElementById('authActionBtn').textContent = 'Create Account';
-    if (error) { showError(error.message); return; }
-    if (data?.user?.identities?.length === 0) {
-      showError('This email is already registered. Switch to Sign In.');
-      return;
+  try {
+    if (isSignUp) {
+      const { data, error } = await sb.auth.signUp({ email, password: pass });
+      if (error) { showError(error.message); return; }
+      if (data?.user?.identities?.length === 0) {
+        showError('This email is already registered. Switch to Sign In.');
+        return;
+      }
+      if (data?.session) {
+        currentUser = data.user;
+        showApp();
+        return;
+      }
+      showToast('✅ Account created! Check your email to confirm.', 'success');
+      isSignUp = false;
+      document.getElementById('authToggle').textContent = "Don't have an account? Sign up";
+    } else {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+      if (error) {
+        if (error.code === 'invalid_credentials') {
+          showError('Invalid email or password. Use Forgot password below to reset.');
+        } else {
+          showError(error.message);
+        }
+        return;
+      }
+      currentUser = data.user;
+      showApp();
     }
-    showToast('✅ Account created! Check your email to confirm.', 'success');
-    isSignUp = false;
-    document.getElementById('authActionBtn').textContent = 'Sign In';
-    document.getElementById('authToggle').textContent = "Don't have an account? Sign up";
-  } else {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
-    document.getElementById('authActionBtn').disabled = false;
-    document.getElementById('authActionBtn').textContent = 'Sign In';
-    if (error) { showError(error.message); return; }
-    currentUser = data.user;
-    showApp();
+  } catch (e) {
+    showError(e.message || 'Something went wrong. Please try again.');
+  } finally {
+    resetAuthButton();
   }
+}
+
+async function handleForgotPassword() {
+  const email = document.getElementById('emailInput').value.trim();
+  document.getElementById('authError').textContent = '';
+  if (!email) { showError('Enter your email above, then click Forgot password.'); return; }
+  if (!sb) { showError('Not connected to Supabase. Refresh the page and try again.'); return; }
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname
+  });
+  if (error) { showError(error.message); return; }
+  showToast('📧 Password reset email sent. Check your inbox.', 'success');
 }
 
 // Auth state change listener - ALSO runs if supabase is null (no config yet)
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('dateInput').valueAsDate = new Date();
+  const authActionBtn = document.getElementById('authActionBtn');
+  const authToggle = document.getElementById('authToggle');
+  if (authActionBtn) authActionBtn.addEventListener('click', handleAuth);
+  const authForgot = document.getElementById('authForgot');
+  if (authForgot) authForgot.addEventListener('click', handleForgotPassword);
+  if (authToggle) authToggle.addEventListener('click', toggleAuthMode);
   initSupabase();
-  if (supabase) {
-    supabase.auth.onAuthStateChange((event, session) => {
+  if (sb) {
+    sb.auth.onAuthStateChange((event, session) => {
       if (session && !currentUser) {
         currentUser = session.user;
         showApp();
@@ -475,7 +533,7 @@ function showApp() {
 }
 
 async function logout() {
-  await supabase.auth.signOut();
+  await sb.auth.signOut();
   currentUser = null;
   showAuth();
 }
@@ -483,7 +541,7 @@ async function logout() {
 // === Data ===
 async function loadData() {
   if (!currentUser) return;
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('entries')
     .select('*')
     .eq('user_id', currentUser.id)
@@ -509,7 +567,7 @@ async function logEntry() {
   document.getElementById('logBtn').disabled = true;
   document.getElementById('logBtn').textContent = 'Saving...';
 
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('entries')
     .insert({ user_id: currentUser.id, skill, sub_skill, hours, date, notes })
     .select();
@@ -533,7 +591,7 @@ async function logEntry() {
 
 async function deleteEntry(id) {
   if (!confirm('Delete this entry?')) return;
-  const { error } = await supabase.from('entries').delete().eq('id', id);
+  const { error } = await sb.from('entries').delete().eq('id', id);
   if (error) { showToast('Error: ' + error.message, 'error'); return; }
   entries = entries.filter(e => e.id !== id);
   render();
@@ -655,8 +713,7 @@ function renderEntries() {
   }
 
   list.innerHTML = filtered.slice(0, 50).map(e => {
-    const date = new Date(e.date + 'T00:00:00');
-    const formatted = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const formatted = formatDate(e.date);
     const sub = e.sub_skill ? ` · ${escHtml(e.sub_skill)}` : '';
     const notes = e.notes ? `<div class="entry-notes">${escHtml(e.notes)}</div>` : '';
     return `<li class="entry-item">
@@ -667,41 +724,38 @@ function renderEntries() {
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <span class="entry-hours">${Number(e.hours).toFixed(1)}h</span>
-        <button class="entry-delete" onclick="deleteEntry('${e.id}')">✕</button>
+        <button type="button" class="entry-delete" title="Delete entry" aria-label="Delete entry" onclick="deleteEntry('${e.id}')">✕</button>
       </div>
     </li>`;
   }).join('');
 }
 
 function updateStreak() {
-  // Calculate streak from entries
-  const dates = [...new Set(entries.map(e => e.date))].sort().reverse();
-  if (dates.length === 0) {
+  const dates = new Set(entries.map(e => e.date));
+  if (dates.size === 0) {
+    document.getElementById('streakCount').textContent = '0';
+    document.getElementById('streakEmoji').textContent = '😴';
+    return;
+  }
+
+  const today = localDateStr();
+  const yesterday = localDateStr(new Date(Date.now() - 86400000));
+
+  // Anchor from today or yesterday — ignore future/outlier dates
+  let anchor = null;
+  if (dates.has(today)) anchor = today;
+  else if (dates.has(yesterday)) anchor = yesterday;
+  else {
     document.getElementById('streakCount').textContent = '0';
     document.getElementById('streakEmoji').textContent = '😴';
     return;
   }
 
   let streak = 0;
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-
-  // Check if latest entry is today or yesterday
-  if (dates[0] !== today && dates[0] !== yesterday) {
-    document.getElementById('streakCount').textContent = '0';
-    document.getElementById('streakEmoji').textContent = '😴';
-    return;
-  }
-
-  let check = new Date(dates[0] + 'T00:00:00');
-  for (const d of dates) {
-    const dateStr = check.toISOString().split('T')[0];
-    if (d === dateStr) {
-      streak++;
-      check.setDate(check.getDate() - 1);
-    } else {
-      break;
-    }
+  let check = new Date(anchor + 'T12:00:00');
+  while (dates.has(localDateStr(check))) {
+    streak++;
+    check.setDate(check.getDate() - 1);
   }
 
   document.getElementById('streakCount').textContent = streak;
@@ -739,7 +793,7 @@ async function importData(event) {
     if (!Array.isArray(data)) throw new Error('Invalid format');
     
     // Bulk insert
-    const { error } = await supabase
+    const { error } = await sb
       .from('entries')
       .insert(data.map(e => ({
         user_id: currentUser.id,
@@ -760,6 +814,18 @@ async function importData(event) {
 }
 
 // === Helpers ===
+function localDateStr(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function formatDate(dateStr) {
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+}
+
 function escHtml(s) {
   if (!s) return '';
   const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
