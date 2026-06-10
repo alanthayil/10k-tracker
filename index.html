@@ -31,38 +31,139 @@
       min-height: 100vh;
     }
 
-    /* Auth Screen */
-    #authScreen {
-      display: flex; align-items: center; justify-content: center;
-      min-height: 100vh; padding: 20px;
+    /* Landing */
+    #landingScreen { display: none; }
+    .landing { width: 100%; }
+
+    .hero {
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 48px 24px 32px; text-align: center;
     }
-    .auth-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 16px; padding: 40px; max-width: 400px; width: 100%;
+    .hero-inner { max-width: 640px; width: 100%; }
+    .hero-brand {
+      font-size: 13px; font-weight: 500; color: var(--text2);
+      letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 24px;
+    }
+    .hero-headline {
+      font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800;
+      letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 16px;
+    }
+    .hero-sub {
+      font-size: clamp(1rem, 2.5vw, 1.125rem); color: var(--text2);
+      font-weight: 400; line-height: 1.6; margin-bottom: 40px;
+    }
+
+    .hero-progress { margin-bottom: 36px; text-align: left; }
+    .hero-progress-labels {
+      display: flex; justify-content: space-between;
+      font-size: 12px; color: var(--text2); margin-bottom: 8px;
+    }
+    .hero-progress-track {
+      position: relative; width: 100%; height: 8px;
+      background: var(--surface2); border-radius: 4px; overflow: visible;
+    }
+    .hero-progress-fill {
+      height: 100%; border-radius: 4px;
+      background: linear-gradient(90deg, var(--gold), #f39c12);
+    }
+    .hero-progress-ticks {
+      position: relative; height: 0; margin-top: -4px;
+    }
+    .hero-progress-tick {
+      position: absolute; top: 0; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .hero-progress-tick::before {
+      content: ''; width: 2px; height: 16px;
+      background: var(--border); margin-bottom: 6px;
+    }
+    .hero-progress-tick span {
+      font-size: 11px; color: var(--text2); white-space: nowrap;
+    }
+    .hero-progress-caption {
+      text-align: center; font-size: 13px; color: var(--text2);
+      margin-top: 28px;
+    }
+
+    .hero-cta {
+      display: inline-block; padding: 14px 32px; border-radius: 8px; border: none;
+      background: var(--blue); color: #fff; font-size: 15px; font-weight: 600;
+      font-family: inherit; cursor: pointer; transition: opacity 0.2s;
+    }
+    .hero-cta:hover { opacity: 0.9; }
+    .hero-scroll-hint {
+      margin-top: 48px; font-size: 12px; color: var(--text2);
+      opacity: 0.6; letter-spacing: 0.05em;
+    }
+
+    .journey {
+      max-width: 640px; margin: 0 auto; padding: 80px 24px;
+      border-top: 1px solid var(--border);
+    }
+    .journey-title {
+      font-size: 13px; font-weight: 600; color: var(--text2);
+      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 40px;
       text-align: center;
     }
-    .auth-card h1 { font-size: 28px; font-weight: 900; margin-bottom: 4px; }
-    .auth-card p { color: var(--text2); font-size: 14px; margin-bottom: 24px; }
-    .auth-card input {
+    .timeline { position: relative; padding-left: 28px; }
+    .timeline::before {
+      content: ''; position: absolute; left: 6px; top: 8px; bottom: 8px;
+      width: 1px; background: var(--border);
+    }
+    .milestone {
+      position: relative; padding-bottom: 40px;
+    }
+    .milestone:last-child { padding-bottom: 0; }
+    .milestone::before {
+      content: ''; position: absolute; left: -28px; top: 6px;
+      width: 13px; height: 13px; border-radius: 50%;
+      background: var(--bg); border: 2px solid var(--gold);
+    }
+    .milestone-hours {
+      font-size: 15px; font-weight: 700; color: var(--gold); margin-bottom: 4px;
+    }
+    .milestone-title {
+      font-size: 18px; font-weight: 600; margin-bottom: 6px;
+    }
+    .milestone-desc { font-size: 14px; color: var(--text2); line-height: 1.5; }
+
+    .signup-section {
+      max-width: 480px; margin: 0 auto; padding: 80px 24px 100px;
+      text-align: center; border-top: 1px solid var(--border);
+    }
+    .signup-section h2 {
+      font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 700;
+      letter-spacing: -0.02em; margin-bottom: 8px;
+    }
+    .signup-section > p {
+      color: var(--text2); font-size: 14px; margin-bottom: 28px;
+    }
+    .signup-form {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 32px 28px; text-align: left;
+    }
+    .signup-form input {
       width: 100%; padding: 12px 14px; border-radius: 8px;
       background: var(--bg); border: 1px solid var(--border); color: var(--text);
       font-size: 14px; font-family: inherit; margin-bottom: 10px;
     }
-    .auth-card input:focus { outline: none; border-color: var(--blue); }
+    .signup-form input:focus { outline: none; border-color: var(--blue); }
     .auth-btn {
       width: 100%; padding: 12px; border-radius: 8px; border: none;
       background: var(--blue); color: #fff; font-size: 15px; font-weight: 600;
       cursor: pointer; transition: opacity 0.2s;
     }
     .auth-btn:hover { opacity: 0.9; }
-    .auth-divider { color: var(--text2); font-size: 12px; margin: 16px 0; }
-    .auth-error { color: var(--red); font-size: 13px; margin-top: 8px; }
+    .auth-error { color: var(--red); font-size: 13px; margin-top: 8px; text-align: center; }
     .auth-link {
       background: none; border: none; padding: 0;
       color: var(--blue); cursor: pointer; font-size: 13px;
       font-family: inherit;
     }
     .auth-link:hover { text-decoration: underline; }
+    .signup-toggle { margin-top: 16px; text-align: center; }
+    .signup-forgot { margin-top: 10px; text-align: center; }
 
     /* App */
     .app { max-width: 1100px; margin: 0 auto; padding: 20px; display: none; }
@@ -228,23 +329,75 @@
   </style>
 </head>
 <body>
-<!-- Auth Screen -->
-<div id="authScreen">
-  <div class="auth-card">
-    <h1>⚡ 10K</h1>
-    <p>Mastery Tracker — your journey to 10,000 hours</p>
-    <input type="email" id="emailInput" placeholder="Your email address" autocomplete="email" />
-    <input type="password" id="passInput" placeholder="Password (min 6 chars)" autocomplete="current-password" />
-    <div id="authError" class="auth-error"></div>
-    <div id="authBtnArea">
-      <button type="button" class="auth-btn" id="authActionBtn">Create Account</button>
-    </div>
-    <div style="margin-top:16px;">
-      <button type="button" class="auth-link" id="authToggle">Already have an account? Sign in</button>
-    </div>
-    <div id="authForgotArea" style="margin-top:10px; display:none;">
-      <button type="button" class="auth-link" id="authForgot">Forgot password?</button>
-    </div>
+<!-- Landing -->
+<div id="landingScreen">
+  <div class="landing">
+    <section class="hero">
+      <div class="hero-inner">
+        <p class="hero-brand">10K Mastery Tracker</p>
+        <h1 class="hero-headline">Most people quit. You won't.</h1>
+        <p class="hero-sub">Track every hour you invest in mastery. Watch yourself transform.</p>
+
+        <div class="hero-progress">
+          <div class="hero-progress-labels">
+            <span>0</span>
+            <span>10,000 hrs</span>
+          </div>
+          <div class="hero-progress-track">
+            <div class="hero-progress-fill" style="width:3%"></div>
+          </div>
+          <div class="hero-progress-ticks">
+            <div class="hero-progress-tick" style="left:10%"><span>1,000</span></div>
+            <div class="hero-progress-tick" style="left:50%"><span>5,000</span></div>
+            <div class="hero-progress-tick" style="left:100%"><span>10,000</span></div>
+          </div>
+          <p class="hero-progress-caption">Every hour counts.</p>
+        </div>
+
+        <button type="button" class="hero-cta" id="startTrackingBtn">Start Tracking</button>
+        <p class="hero-scroll-hint">Scroll</p>
+      </div>
+    </section>
+
+    <section class="journey">
+      <h2 class="journey-title">The Journey</h2>
+      <div class="timeline">
+        <div class="milestone">
+          <div class="milestone-hours">1,000 hours</div>
+          <div class="milestone-title">Competent</div>
+          <p class="milestone-desc">Genuinely competent in your craft.</p>
+        </div>
+        <div class="milestone">
+          <div class="milestone-hours">3,000–5,000 hours</div>
+          <div class="milestone-title">Trusted</div>
+          <p class="milestone-desc">Highly capable. People trust you.</p>
+        </div>
+        <div class="milestone">
+          <div class="milestone-hours">10,000+ hours</div>
+          <div class="milestone-title">Expert</div>
+          <p class="milestone-desc">Expert-level mastery in your niche.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="signup-section" id="signup">
+      <h2>Start tracking</h2>
+      <p>Free. Syncs across devices.</p>
+      <div class="signup-form">
+        <input type="email" id="emailInput" placeholder="Your email address" autocomplete="email" />
+        <input type="password" id="passInput" placeholder="Password (min 6 chars)" autocomplete="current-password" />
+        <div id="authError" class="auth-error"></div>
+        <div id="authBtnArea">
+          <button type="button" class="auth-btn" id="authActionBtn">Create Account</button>
+        </div>
+        <div class="signup-toggle">
+          <button type="button" class="auth-link" id="authToggle">Already have an account? Sign in</button>
+        </div>
+        <div id="authForgotArea" class="signup-forgot" style="display:none;">
+          <button type="button" class="auth-link" id="authForgot">Forgot password?</button>
+        </div>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -389,9 +542,13 @@ function checkConfig() {
 }
 
 function initSupabase() {
-  if (!checkConfig()) return false;
+  if (!checkConfig()) {
+    showLanding();
+    return false;
+  }
   if (!window.supabase?.createClient) {
     document.getElementById('authError').textContent = 'Failed to load Supabase library. Check your network and refresh.';
+    showLanding();
     return false;
   }
   try {
@@ -400,6 +557,7 @@ function initSupabase() {
     return true;
   } catch(e) {
     document.getElementById('authError').textContent = 'Failed to connect: ' + e.message;
+    showLanding();
     return false;
   }
 }
@@ -409,6 +567,8 @@ async function checkSession() {
   if (session) {
     currentUser = session.user;
     showApp();
+  } else {
+    showLanding();
   }
 }
 
@@ -502,6 +662,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const authForgot = document.getElementById('authForgot');
   if (authForgot) authForgot.addEventListener('click', handleForgotPassword);
   if (authToggle) authToggle.addEventListener('click', toggleAuthMode);
+  const startTrackingBtn = document.getElementById('startTrackingBtn');
+  if (startTrackingBtn) startTrackingBtn.addEventListener('click', scrollToSignup);
   initSupabase();
   if (sb) {
     sb.auth.onAuthStateChange((event, session) => {
@@ -510,7 +672,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showApp();
       } else if (!session && currentUser) {
         currentUser = null;
-        showAuth();
+        showLanding();
       }
     });
   }
@@ -520,13 +682,13 @@ function showError(msg) {
   document.getElementById('authError').textContent = msg;
 }
 
-function showAuth() {
-  document.getElementById('authScreen').style.display = 'flex';
+function showLanding() {
+  document.getElementById('landingScreen').style.display = 'block';
   document.getElementById('app').style.display = 'none';
 }
 
 function showApp() {
-  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('landingScreen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   document.getElementById('userEmail').textContent = currentUser.email || currentUser.id.slice(0, 8);
   loadData();
@@ -535,7 +697,13 @@ function showApp() {
 async function logout() {
   await sb.auth.signOut();
   currentUser = null;
-  showAuth();
+  showLanding();
+}
+
+function scrollToSignup() {
+  const signup = document.getElementById('signup');
+  signup.scrollIntoView({ behavior: 'smooth' });
+  setTimeout(() => document.getElementById('emailInput')?.focus(), 600);
 }
 
 // === Data ===

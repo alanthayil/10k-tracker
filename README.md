@@ -89,4 +89,19 @@ Then visit **http://localhost:8767**
 
 ## Deploy
 
-Push this folder to a GitHub repo and enable GitHub Pages. Your data will follow you everywhere.
+**Live site:** [https://alanthayil.github.io/10k-tracker/](https://alanthayil.github.io/10k-tracker/)
+
+Hosted on GitHub Pages from the `main` branch, `/ (root)` folder. To redeploy after changes, push to [github.com/alanthayil/10k-tracker](https://github.com/alanthayil/10k-tracker) — Pages updates within a minute or two.
+
+### Supabase Auth URLs (required for public use)
+
+After deploying, configure your Supabase project so sign-up confirmation and password reset links point to the live site:
+
+1. In Supabase, go to **Authentication → URL Configuration**
+2. Set **Site URL** to `https://alanthayil.github.io/10k-tracker/`
+3. Add these **Redirect URLs**:
+   - `https://alanthayil.github.io/10k-tracker/`
+   - `https://alanthayil.github.io/10k-tracker`
+4. Under **Authentication → Providers → Email**, confirm the email provider is enabled
+
+If you deploy to a different URL later, update these values to match.
