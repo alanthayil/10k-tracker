@@ -326,6 +326,62 @@
     .toast.info { background: var(--blue); color: #fff; }
 
     .skills-chart { margin-top: 10px; }
+
+    /* Timer */
+    .timer-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 0 6px; border-top: 1px solid var(--border);
+      margin-top: 4px; flex-wrap: wrap;
+    }
+    .timer-display {
+      font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums;
+      letter-spacing: 0.5px; min-width: 100px;
+    }
+    .timer-display.running { color: var(--green); }
+    .timer-display.paused { color: var(--orange); }
+    .timer-display.idle { color: var(--text2); }
+    .timer-btn {
+      padding: 6px 14px; border-radius: 6px; border: none;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      font-family: inherit; transition: all 0.2s;
+    }
+    .timer-btn-start {
+      background: var(--green); color: #fff;
+    }
+    .timer-btn-start:hover { opacity: 0.9; }
+    .timer-btn-start:disabled { opacity: 0.4; cursor: not-allowed; }
+    .timer-btn-pause {
+      background: var(--orange); color: #fff;
+    }
+    .timer-btn-pause:hover { opacity: 0.9; }
+    .timer-btn-stop {
+      background: var(--red); color: #fff;
+    }
+    .timer-btn-stop:hover { opacity: 0.9; }
+    .timer-btn-reset {
+      background: var(--surface2); color: var(--text2);
+      border: 1px solid var(--border);
+    }
+    .timer-btn-reset:hover { color: var(--text); border-color: var(--text2); }
+    .timer-status {
+      font-size: 12px; color: var(--text2); margin-left: auto;
+    }
+    .timer-status .dot {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+      margin-right: 4px;
+    }
+    .timer-status .dot.green { background: var(--green); }
+    .timer-status .dot.orange { background: var(--orange); }
+    .timer-status .dot.gray { background: var(--text2); }
+    .timer-gap-msg {
+      width: 100%; font-size: 12px; color: var(--orange);
+      padding: 4px 0 2px;
+    }
+    .timer-gap-msg button {
+      background: none; border: none; color: var(--blue); cursor: pointer;
+      font-size: 12px; font-family: inherit; text-decoration: underline;
+      padding: 0 4px;
+    }
   </style>
 </head>
 <body>
@@ -457,6 +513,15 @@
         <label>Sub-skill (optional)</label>
         <input type="text" id="subSkillInput" placeholder="e.g. Scales, React, Anatomy" />
       </div>
+
+      <!-- Timer -->
+      <div class="timer-bar" id="timerBar">
+        <button type="button" class="timer-btn timer-btn-start" id="timerStartBtn" onclick="timerStart()">▶ Start</button>
+        <span class="timer-display idle" id="timerDisplay">00:00:00</span>
+        <span class="timer-status" id="timerStatus"><span class="dot gray"></span>Idle</span>
+        <div class="timer-gap-msg" id="timerGapMsg" style="display:none;"></div>
+      </div>
+
       <div class="form-row">
         <div class="form-group">
           <label>Hours</label>
@@ -520,6 +585,18 @@ let currentUser = null;
 let entries = [];
 let charts = { skills: null };
 let isSignUp = true;
+
+// Timer state
+let timer = {
+  skill: '',
+  elapsed: 0,
+  running: false,
+  interval: null,
+  startTime: null,
+  lastTick: null
+};
+const TIMER_STORAGE_KEY = 'tk_timer';
+const TIMER_GAP_THRESHOLD = 300; // 5 minutes in seconds
 
 // Wait for config
 function checkConfig() {
@@ -676,6 +753,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // Sync timer skill when input changes while running
+  document.getElementById('skillInput').addEventListener('input', () => {
+    if (timer.running) {
+      timer.skill = document.getElementById('skillInput').value.trim();
+      timerPersist();
+    }
+  });
 });
 
 function showError(msg) {
@@ -719,6 +804,185 @@ async function loadData() {
   if (error) { console.error(error); showToast('Error loading data', 'error'); return; }
   entries = data || [];
   render();
+  restoreTimerState();
+}
+
+// === Timer ===
+function timerFormat(secs) {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function timerPersist() {
+  try {
+    localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify({
+      skill: timer.skill,
+      elapsed: timer.elapsed,
+      running: timer.running,
+      startTime: timer.startTime || null,
+      lastTick: new Date().toISOString()
+    }));
+  } catch (e) { /* storage full — ignore */ }
+}
+
+function timerClearStorage() {
+  try { localStorage.removeItem(TIMER_STORAGE_KEY); } catch (e) { /* ignore */ }
+}
+
+function timerTick() {
+  if (!timer.running) return;
+  timer.elapsed++;
+  timerUpdateUI();
+  timerPersist();
+}
+
+function timerUpdateUI() {
+  const display = document.getElementById('timerDisplay');
+  const status = document.getElementById('timerStatus');
+  const startBtn = document.getElementById('timerStartBtn');
+
+  display.textContent = timerFormat(timer.elapsed);
+  display.className = 'timer-display';
+  display.classList.add(timer.running ? 'running' : (timer.elapsed > 0 ? 'paused' : 'idle'));
+
+  if (timer.running) {
+    status.innerHTML = '<span class="dot green"></span>Running';
+    startBtn.textContent = '⏸ Pause';
+    startBtn.className = 'timer-btn timer-btn-pause';
+    startBtn.onclick = timerPause;
+  } else if (timer.elapsed > 0) {
+    status.innerHTML = '<span class="dot orange"></span>Paused';
+    startBtn.textContent = '▶ Resume';
+    startBtn.className = 'timer-btn timer-btn-start';
+    startBtn.onclick = timerStart;
+  } else {
+    status.innerHTML = '<span class="dot gray"></span>Idle';
+    startBtn.textContent = '▶ Start';
+    startBtn.className = 'timer-btn timer-btn-start';
+    startBtn.onclick = timerStart;
+  }
+}
+
+function timerStart() {
+  const skill = document.getElementById('skillInput').value.trim();
+  if (!skill) {
+    shake(document.getElementById('skillInput'));
+    showToast('Enter a skill before starting the timer', 'info');
+    return;
+  }
+
+  // If coming back from a gap-paused state, clear the gap message
+  document.getElementById('timerGapMsg').style.display = 'none';
+
+  timer.skill = skill;
+  if (!timer.running) {
+    // Was paused or fresh — start/resume
+    timer.running = true;
+    if (!timer.startTime) {
+      timer.startTime = new Date().toISOString();
+    }
+    timer.interval = setInterval(timerTick, 1000);
+    timerPersist();
+  }
+  timerUpdateUI();
+}
+
+function timerPause() {
+  if (!timer.running) return;
+  timer.running = false;
+  if (timer.interval) {
+    clearInterval(timer.interval);
+    timer.interval = null;
+  }
+  timerPersist();
+  timerUpdateUI();
+}
+
+function timerStop() {
+  if (timer.interval) {
+    clearInterval(timer.interval);
+    timer.interval = null;
+  }
+  timer.running = false;
+
+  // Calculate hours and fill the input
+  if (timer.elapsed > 0) {
+    const hours = timer.elapsed / 3600;
+    document.getElementById('hoursInput').value = hours.toFixed(2);
+  }
+
+  // Clear timer state
+  timer.skill = '';
+  timer.elapsed = 0;
+  timer.startTime = null;
+  timer.lastTick = null;
+  timerClearStorage();
+  timerUpdateUI();
+  document.getElementById('timerGapMsg').style.display = 'none';
+}
+
+function timerReset() {
+  timerPause();
+  timer.skill = '';
+  timer.elapsed = 0;
+  timer.startTime = null;
+  timer.lastTick = null;
+  timerClearStorage();
+  timerUpdateUI();
+  document.getElementById('timerGapMsg').style.display = 'none';
+}
+
+function restoreTimerState() {
+  let saved;
+  try {
+    const raw = localStorage.getItem(TIMER_STORAGE_KEY);
+    if (!raw) return;
+    saved = JSON.parse(raw);
+  } catch (e) { return; }
+
+  if (!saved || typeof saved.elapsed !== 'number') return;
+
+  timer.skill = saved.skill || '';
+  timer.elapsed = saved.elapsed;
+
+  if (saved.running) {
+    // Gap detection
+    const now = Date.now();
+    const lastTick = saved.lastTick ? new Date(saved.lastTick).getTime() : null;
+    if (lastTick) {
+      const gapSec = Math.floor((now - lastTick) / 1000);
+      if (gapSec > TIMER_GAP_THRESHOLD) {
+        // Gap too large — auto-pause and show message
+        timer.running = false;
+        if (timer.skill) {
+          document.getElementById('skillInput').value = timer.skill;
+        }
+        timerUpdateUI();
+
+        const gapMins = Math.floor(gapSec / 60);
+        const gapSecs = gapSec % 60;
+        const gapStr = gapMins > 0 ? `${gapMins}m ${gapSecs}s` : `${gapSecs}s`;
+        const msg = document.getElementById('timerGapMsg');
+        msg.style.display = 'block';
+        msg.innerHTML = `⚠ You were away for <strong>${gapStr}</strong>. Timer paused. `;
+        return;
+      }
+    }
+
+    // Gap is small — resume the timer
+    timer.running = true;
+    timer.startTime = saved.startTime || new Date().toISOString();
+    timer.interval = setInterval(timerTick, 1000);
+  } else {
+    // Timer was paused; restore skill name
+    if (timer.skill) {
+      document.getElementById('skillInput').value = timer.skill;
+    }
+  }
+
+  timerUpdateUI();
 }
 
 async function logEntry() {
