@@ -2,6 +2,8 @@
 
 Track your journey to 10,000 hours of deliberate practice. Syncs across all your devices via Supabase.
 
+![10K Mastery Tracker — Landing page](screenshots/landing.png)
+
 ## Setup (5 minutes)
 
 ### 1. Create Supabase project
